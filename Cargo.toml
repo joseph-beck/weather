@@ -1,0 +1,3 @@
+[workspace]
+members = ["weather-cli", "weather-core"]
+resolver = "1"
