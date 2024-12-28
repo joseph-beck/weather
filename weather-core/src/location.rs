@@ -1,19 +1,19 @@
 use crate::{
-  error,
+  error::Error,
   ip::{self},
 };
 
 #[derive(Debug)]
 pub struct Location {
-  country: String,
-  region: Option<String>,
-  city: Option<String>,
-  lat: Option<f64>,
-  lon: Option<f64>,
+  pub country: String,
+  pub region: Option<String>,
+  pub city: Option<String>,
+  pub lat: Option<f64>,
+  pub lon: Option<f64>,
 }
 
 impl Location {
-  pub async fn from_ip(ip: &str) -> Result<Location, error::Error> {
+  pub async fn from_ip(ip: &str) -> Result<Location, Error> {
     match ip::get_location(ip.to_string()).await {
       Ok(location) => Ok(Location {
         country: location.country,
@@ -22,7 +22,7 @@ impl Location {
         lat: Some(location.lat),
         lon: Some(location.lon),
       }),
-      Err(err) => Err(error::Error::BadIp {
+      Err(err) => Err(Error::BadIp {
         ip: ip.to_string(),
         message: err.to_string(),
       }),
