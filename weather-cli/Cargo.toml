@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+clap = { version = "3", features = ["derive"] }
 dotenv = "0.15.0"
 weather-core = { path = "../weather-core" }

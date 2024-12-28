@@ -1,4 +1,6 @@
 mod app;
+mod command;
+mod handler;
 
 #[tokio::main]
 async fn main() {
