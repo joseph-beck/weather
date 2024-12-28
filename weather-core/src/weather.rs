@@ -1,22 +1,10 @@
 use serde::Deserialize;
 
-use crate::{error::Error, location::Location, FromResponse, FromResponseWithOption};
+use crate::{error::Error, location::Location};
 
 #[derive(Debug, Deserialize)]
 struct Response {
-  location: LocationResponse,
   current: CurrentResponse,
-}
-
-#[derive(Debug, Deserialize)]
-struct LocationResponse {
-  name: String,
-  region: String,
-  country: String,
-  lat: f64,
-  lon: f64,
-  tz_id: String,
-  localtime: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -133,15 +121,15 @@ impl Weather {
   }
 }
 
-impl FromResponseWithOption<Response, Units> for Weather {
-  fn new_from_response_with_options(response: Response, units: Units) -> Self {
+impl From<(Response, Units)> for Weather {
+  fn from((response, units): (Response, Units)) -> Self {
     if units == Units::Imperial {
       return Weather::new(
         response.current.is_day == 1,
         response.current.temp_f,
         response.current.feelslike_f,
         response.current.heatindex_f,
-        Condition::new_from_response(response.current.condition),
+        Condition::from(response.current.condition),
         response.current.wind_mph,
         response.current.wind_degree,
         response.current.wind_dir,
@@ -161,7 +149,7 @@ impl FromResponseWithOption<Response, Units> for Weather {
         response.current.temp_c,
         response.current.feelslike_c,
         response.current.heatindex_c,
-        Condition::new_from_response(response.current.condition),
+        Condition::from(response.current.condition),
         response.current.wind_kph,
         response.current.wind_degree,
         response.current.wind_dir,
@@ -185,8 +173,8 @@ impl Condition {
   }
 }
 
-impl FromResponse<ConditionResponse> for Condition {
-  fn new_from_response(response: ConditionResponse) -> Self {
+impl From<ConditionResponse> for Condition {
+  fn from(response: ConditionResponse) -> Self {
     Condition::new(response.text, response.icon, response.code)
   }
 }
@@ -207,7 +195,7 @@ pub async fn get_current_weather(location: Location, units: Units) -> Result<Wea
   match reqwest::get(&url).await {
     Ok(response) => {
       let weather: Response = response.json().await.unwrap();
-      Ok(Weather::new_from_response_with_options(weather, units))
+      Ok(Weather::from((weather, units)))
     }
     Err(err) => Err(Error::Fetch {
       message: err.to_string(),
@@ -238,7 +226,7 @@ pub async fn get_forecast_weather(
   match reqwest::get(&url).await {
     Ok(response) => {
       let weather: Response = response.json().await.unwrap();
-      Ok(Weather::new_from_response_with_options(weather, units))
+      Ok(Weather::from((weather, units)))
     }
     Err(err) => Err(Error::Fetch {
       message: err.to_string(),

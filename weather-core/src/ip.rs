@@ -2,17 +2,8 @@ use reqwest;
 use serde::Deserialize;
 use std::env;
 
-#[derive(Debug, Deserialize, PartialEq)]
-pub enum Status {
-  #[serde(rename = "success")]
-  Success,
-  #[serde(rename = "fail")]
-  Fail,
-}
-
 #[derive(Debug, Deserialize)]
-pub struct Response {
-  pub query: String,
+struct Response {
   pub status: Status,
   pub country: String,
   #[serde(rename = "countryCode")]
@@ -27,12 +18,78 @@ pub struct Response {
   pub isp: String,
 }
 
-pub async fn get_location(ip: String) -> Result<Response, reqwest::Error> {
+#[derive(Debug, Deserialize, PartialEq)]
+pub enum Status {
+  #[serde(rename = "success")]
+  Success,
+  #[serde(rename = "fail")]
+  Fail,
+}
+
+pub struct IP {
+  pub status: Status,
+  pub country: String,
+  pub country_code: String,
+  pub region: String,
+  pub region_name: String,
+  pub city: String,
+  pub zip: String,
+  pub lat: f64,
+  pub lon: f64,
+  pub isp: String,
+}
+
+impl IP {
+  pub fn new(
+    status: Status,
+    country: String,
+    country_code: String,
+    region: String,
+    region_name: String,
+    city: String,
+    zip: String,
+    lat: f64,
+    lon: f64,
+    isp: String,
+  ) -> Self {
+    IP {
+      status,
+      country,
+      country_code,
+      region,
+      region_name,
+      city,
+      zip,
+      lat,
+      lon,
+      isp,
+    }
+  }
+}
+
+impl From<Response> for IP {
+  fn from(response: Response) -> Self {
+    IP::new(
+      response.status,
+      response.country,
+      response.country_code,
+      response.region,
+      response.region_name,
+      response.city,
+      response.zip,
+      response.lat,
+      response.lon,
+      response.isp,
+    )
+  }
+}
+
+pub async fn get_location(ip: String) -> Result<IP, reqwest::Error> {
   let address = env::var("IP_LOCATION_API").unwrap();
   let url = format!("{}/{}", address, ip);
   let response = reqwest::get(&url).await?;
   let location: Response = response.json::<Response>().await?;
-  Ok(location)
+  Ok(IP::from(location))
 }
 
 pub async fn get_public_ip() -> Result<String, reqwest::Error> {
@@ -89,7 +146,6 @@ mod tests {
     assert!(result.is_ok());
 
     let location = result.unwrap();
-    assert_eq!(location.query, "8.8.8.8");
     assert_eq!(location.status, Status::Success);
     assert_eq!(location.country, "United States");
     assert_eq!(location.country_code, "US");

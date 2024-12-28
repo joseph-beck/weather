@@ -1,23 +1,11 @@
 use chrono::Local;
 use serde::Deserialize;
 
-use crate::{error::Error, location::Location, FromResponse};
+use crate::{error::Error, location::Location};
 
 #[derive(Deserialize, Debug)]
 struct Response {
-  location: LocationResponse,
   astronomy: AstronomyResponse,
-}
-
-#[derive(Deserialize, Debug)]
-struct LocationResponse {
-  name: String,
-  region: String,
-  country: String,
-  lat: f64,
-  lon: f64,
-  tz_id: String,
-  localtime: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -73,8 +61,8 @@ impl Astronomy {
   }
 }
 
-impl FromResponse<Response> for Astronomy {
-  fn new_from_response(response: Response) -> Self {
+impl From<Response> for Astronomy {
+  fn from(response: Response) -> Self {
     Astronomy::new(
       response.astronomy.astro.sunrise,
       response.astronomy.astro.sunset,
@@ -88,6 +76,9 @@ impl FromResponse<Response> for Astronomy {
   }
 }
 
+/// Get the current astronomy data for a given location.
+/// By default uses the lat and lon data from the location struct, if it exists.
+/// If there is no location data within the struct, it will return an error.
 pub async fn get_current_astronomy(location: Location) -> Result<Astronomy, Error> {
   if location.lat.is_none() && location.lon.is_none() {
     return Err(Error::NoLocation);
@@ -108,7 +99,7 @@ pub async fn get_current_astronomy(location: Location) -> Result<Astronomy, Erro
   match reqwest::get(&url).await {
     Ok(response) => {
       let weather: Response = response.json().await.unwrap();
-      Ok(Astronomy::new_from_response(weather))
+      Ok(Astronomy::from(weather))
     }
     Err(err) => Err(Error::Fetch {
       message: err.to_string(),
