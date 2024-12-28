@@ -3,7 +3,7 @@ use crate::{
   ip::{self},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Location {
   pub country: String,
   pub region: Option<String>,
@@ -12,21 +12,19 @@ pub struct Location {
   pub lon: Option<f64>,
 }
 
-impl Location {
-  pub async fn from_ip(ip: &str) -> Result<Location, Error> {
-    match ip::get_location(ip.to_string()).await {
-      Ok(location) => Ok(Location {
-        country: location.country,
-        region: Some(location.region),
-        city: Some(location.city),
-        lat: Some(location.lat),
-        lon: Some(location.lon),
-      }),
-      Err(err) => Err(Error::BadIp {
-        ip: ip.to_string(),
-        message: err.to_string(),
-      }),
-    }
+pub async fn get_location_from_ip(ip: &str) -> Result<Location, Error> {
+  match ip::get_location(ip.to_string()).await {
+    Ok(location) => Ok(Location {
+      country: location.country,
+      region: Some(location.region),
+      city: Some(location.city),
+      lat: Some(location.lat),
+      lon: Some(location.lon),
+    }),
+    Err(err) => Err(Error::BadIp {
+      ip: ip.to_string(),
+      message: err.to_string(),
+    }),
   }
 }
 
@@ -65,7 +63,7 @@ mod tests {
       )
       .create();
 
-    let result = Location::from_ip("8.8.8.8").await;
+    let result = get_location_from_ip("8.8.8.8").await;
     assert!(result.is_ok());
 
     let location = result.unwrap();
@@ -86,7 +84,7 @@ mod tests {
       .create();
 
     // The ip is intentionally mismatched.
-    let result = Location::from_ip("2.2.2.2").await;
+    let result = get_location_from_ip("2.2.2.2").await;
     assert!(result.is_err());
   }
 }

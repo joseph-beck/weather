@@ -1,18 +1,11 @@
 use serde::Deserialize;
 
-use crate::{error::Error, location::Location};
+use crate::{error::Error, location::Location, FromResponse, FromResponseWithOption};
 
 #[derive(Debug, Deserialize)]
 struct Response {
   location: LocationResponse,
   current: CurrentResponse,
-}
-
-#[derive(Debug, Deserialize)]
-struct ConditionResponse {
-  text: String,
-  icon: String,
-  code: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,11 +50,11 @@ struct CurrentResponse {
   gust_kph: f64,
 }
 
-#[derive(Debug)]
-pub struct Condition {
-  pub text: String,
-  pub icon: String,
-  pub code: i32,
+#[derive(Debug, Deserialize)]
+struct ConditionResponse {
+  text: String,
+  icon: String,
+  code: i32,
 }
 
 #[derive(Debug, PartialEq)]
@@ -75,7 +68,7 @@ pub struct Weather {
   pub is_day: bool,
   pub temperature: f64,
   pub feels_like: f64,
-  pub head_index: f64,
+  pub heat_index: f64,
   pub condition: Condition,
   pub wind_speed: f64,
   pub wind_degree: i32,
@@ -91,6 +84,113 @@ pub struct Weather {
   pub dew_point: f64,
 }
 
+#[derive(Debug)]
+pub struct Condition {
+  pub text: String,
+  pub icon: String,
+  pub code: i32,
+}
+
+impl Weather {
+  pub fn new(
+    is_day: bool,
+    temperature: f64,
+    feels_like: f64,
+    heat_index: f64,
+    condition: Condition,
+    wind_speed: f64,
+    wind_degree: i32,
+    wind_dir: String,
+    wind_gust_speed: f64,
+    wind_chill: f64,
+    pressure: f64,
+    precipitation: f64,
+    humidity: i32,
+    cloud: i32,
+    uv: f64,
+    visibility: f64,
+    dew_point: f64,
+  ) -> Self {
+    Weather {
+      is_day,
+      temperature,
+      feels_like,
+      heat_index,
+      condition,
+      wind_speed,
+      wind_degree,
+      wind_dir,
+      wind_gust_speed,
+      wind_chill,
+      pressure,
+      precipitation,
+      humidity,
+      cloud,
+      uv,
+      visibility,
+      dew_point,
+    }
+  }
+}
+
+impl FromResponseWithOption<Response, Units> for Weather {
+  fn new_from_response_with_options(response: Response, units: Units) -> Self {
+    if units == Units::Imperial {
+      return Weather::new(
+        response.current.is_day == 1,
+        response.current.temp_f,
+        response.current.feelslike_f,
+        response.current.heatindex_f,
+        Condition::new_from_response(response.current.condition),
+        response.current.wind_mph,
+        response.current.wind_degree,
+        response.current.wind_dir,
+        response.current.gust_mph,
+        response.current.windchill_f,
+        response.current.pressure_in,
+        response.current.precip_in,
+        response.current.humidity,
+        response.current.cloud,
+        response.current.uv,
+        response.current.vis_miles,
+        response.current.dewpoint_f,
+      );
+    } else {
+      return Weather::new(
+        response.current.is_day == 1,
+        response.current.temp_c,
+        response.current.feelslike_c,
+        response.current.heatindex_c,
+        Condition::new_from_response(response.current.condition),
+        response.current.wind_kph,
+        response.current.wind_degree,
+        response.current.wind_dir,
+        response.current.gust_kph,
+        response.current.windchill_c,
+        response.current.pressure_mb,
+        response.current.precip_mm,
+        response.current.humidity,
+        response.current.cloud,
+        response.current.uv,
+        response.current.vis_km,
+        response.current.dewpoint_c,
+      );
+    }
+  }
+}
+
+impl Condition {
+  pub fn new(text: String, icon: String, code: i32) -> Self {
+    Condition { text, icon, code }
+  }
+}
+
+impl FromResponse<ConditionResponse> for Condition {
+  fn new_from_response(response: ConditionResponse) -> Self {
+    Condition::new(response.text, response.icon, response.code)
+  }
+}
+
 pub async fn get_current_weather(location: Location, units: Units) -> Result<Weather, Error> {
   if location.lat.is_none() && location.lon.is_none() {
     return Err(Error::NoLocation);
@@ -103,58 +203,42 @@ pub async fn get_current_weather(location: Location, units: Units) -> Result<Wea
   let key = std::env::var("WEATHER_KEY").unwrap();
 
   let url = format!("{}/current.json?key={}&q={},{}", address, key, lat, lon);
+
   match reqwest::get(&url).await {
     Ok(response) => {
       let weather: Response = response.json().await.unwrap();
-      if units == Units::Imperial {
-        Ok(Weather {
-          is_day: weather.current.is_day == 1,
-          temperature: weather.current.temp_f,
-          feels_like: weather.current.feelslike_f,
-          head_index: weather.current.heatindex_f,
-          condition: Condition {
-            text: weather.current.condition.text,
-            icon: weather.current.condition.icon,
-            code: weather.current.condition.code,
-          },
-          wind_speed: weather.current.wind_mph,
-          wind_degree: weather.current.wind_degree,
-          wind_dir: weather.current.wind_dir,
-          wind_gust_speed: weather.current.gust_mph,
-          wind_chill: weather.current.windchill_f,
-          pressure: weather.current.pressure_in,
-          precipitation: weather.current.precip_in,
-          humidity: weather.current.humidity,
-          cloud: weather.current.cloud,
-          uv: weather.current.uv,
-          visibility: weather.current.vis_miles,
-          dew_point: weather.current.dewpoint_f,
-        })
-      } else {
-        Ok(Weather {
-          is_day: weather.current.is_day == 1,
-          temperature: weather.current.temp_c,
-          feels_like: weather.current.feelslike_c,
-          head_index: weather.current.heatindex_c,
-          condition: Condition {
-            text: weather.current.condition.text,
-            icon: weather.current.condition.icon,
-            code: weather.current.condition.code,
-          },
-          wind_speed: weather.current.wind_kph,
-          wind_degree: weather.current.wind_degree,
-          wind_dir: weather.current.wind_dir,
-          wind_gust_speed: weather.current.gust_kph,
-          wind_chill: weather.current.windchill_c,
-          pressure: weather.current.pressure_mb,
-          precipitation: weather.current.precip_mm,
-          humidity: weather.current.humidity,
-          cloud: weather.current.cloud,
-          uv: weather.current.uv,
-          visibility: weather.current.vis_km,
-          dew_point: weather.current.dewpoint_c,
-        })
-      }
+      Ok(Weather::new_from_response_with_options(weather, units))
+    }
+    Err(err) => Err(Error::Fetch {
+      message: err.to_string(),
+    }),
+  }
+}
+
+pub async fn get_forecast_weather(
+  location: Location,
+  units: Units,
+  days: i32,
+) -> Result<Weather, Error> {
+  if location.lat.is_none() && location.lon.is_none() {
+    return Err(Error::NoLocation);
+  }
+
+  let lat = location.lat.unwrap();
+  let lon = location.lon.unwrap();
+
+  let address = std::env::var("WEATHER_API").unwrap();
+  let key = std::env::var("WEATHER_KEY").unwrap();
+
+  let url = format!(
+    "{}/forecast.json?key={}&q={},{}&days={}",
+    address, key, lat, lon, days
+  );
+
+  match reqwest::get(&url).await {
+    Ok(response) => {
+      let weather: Response = response.json().await.unwrap();
+      Ok(Weather::new_from_response_with_options(weather, units))
     }
     Err(err) => Err(Error::Fetch {
       message: err.to_string(),
