@@ -1,6 +1,8 @@
 use clap::{value_parser, Arg, Command};
 
-pub fn cli() -> Command<'static> {
+use crate::style::style;
+
+pub fn cli() -> Command {
   // Verbose option. Defaults to false.
   let verbose_option = Arg::new("verbose")
     .short('v')
@@ -30,14 +32,6 @@ pub fn cli() -> Command<'static> {
   let days_arg = Arg::new("days")
     .value_parser(value_parser!(i32))
     .default_value("1")
-    .validator(|v| {
-      let value = v.parse::<i32>().unwrap();
-      if value < 1 || value > 5 {
-        Err("Days must be between 1 and 5.".to_string())
-      } else {
-        Ok(())
-      }
-    })
     .required(false)
     .help("How many days ahead to forecast to? Minimum value of 1 and maximum value of 5.");
 
@@ -45,6 +39,7 @@ pub fn cli() -> Command<'static> {
     .about("Weather!")
     .subcommand_required(true)
     .arg_required_else_help(true)
+    .styles(style())
     .subcommand(
       Command::new("alert")
         .about("Get the current alerts.")

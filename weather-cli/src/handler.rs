@@ -1,5 +1,5 @@
 use weather_core::{
-  altert::get_alerts,
+  alert::get_alerts,
   astronomy::get_current_astronomy,
   error::Error,
   ip::get_public_ip,
@@ -7,15 +7,23 @@ use weather_core::{
   weather::{get_current_weather, get_forecast_weather, Units},
 };
 
+use crate::validate::validate_days;
+
 pub async fn handle_alerts(days: i32) -> Result<(), Error> {
   println!("Weather alerts");
+
+  let days_valid = validate_days(days);
+  if days_valid.is_err() {
+    return days_valid;
+  }
+
   match get_public_ip().await {
     Ok(ip) => {
       let location = get_location_from_ip(&ip).await.unwrap();
-      println!("{:?}", location);
+      println!("{:?}", location.to_string());
 
       let alerts = get_alerts(location.clone(), days).await.unwrap();
-      println!("{:?}", alerts);
+      println!("{:?}", alerts.to_string());
 
       Ok(())
     }
@@ -30,10 +38,10 @@ pub async fn handle_astronomy() -> Result<(), Error> {
   match get_public_ip().await {
     Ok(ip) => {
       let location = get_location_from_ip(&ip).await.unwrap();
-      println!("{:?}", location);
+      println!("{:?}", location.to_string());
 
       let astronomy = get_current_astronomy(location.clone()).await.unwrap();
-      println!("{:?}", astronomy);
+      println!("{:?}", astronomy.to_string());
 
       Ok(())
     }
@@ -48,12 +56,12 @@ pub async fn handle_current() -> Result<(), Error> {
   match get_public_ip().await {
     Ok(ip) => {
       let location = get_location_from_ip(&ip).await.unwrap();
-      println!("{:?}", location);
+      println!("{:?}", location.to_string());
 
       let weather = get_current_weather(location.clone(), Units::Metric)
         .await
         .unwrap();
-      println!("{:?}", weather);
+      println!("{:?}", weather.to_string());
 
       Ok(())
     }
@@ -65,15 +73,21 @@ pub async fn handle_current() -> Result<(), Error> {
 
 pub async fn handle_forecast(days: i32) -> Result<(), Error> {
   println!("Weather forecast");
+
+  let days_valid = validate_days(days);
+  if days_valid.is_err() {
+    return days_valid;
+  }
+
   match get_public_ip().await {
     Ok(ip) => {
       let location = get_location_from_ip(&ip).await.unwrap();
-      println!("{:?}", location);
+      println!("{:?}", location.to_string());
 
       let weather = get_forecast_weather(location.clone(), Units::Metric, days)
         .await
         .unwrap();
-      println!("{:?}", weather);
+      println!("{:?}", weather.to_string());
 
       Ok(())
     }

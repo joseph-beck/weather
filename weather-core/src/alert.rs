@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{error::Error, location::Location};
+use crate::{error::Error, location::Location, Query};
 
 #[derive(Debug, Deserialize)]
 struct Response {
@@ -64,6 +64,16 @@ impl From<Response> for Alerts {
   }
 }
 
+impl ToString for Alerts {
+  fn to_string(&self) -> String {
+    let mut result = String::new();
+    for alert in &self.alerts {
+      result.push_str(&format!("{}\n", alert.to_string()));
+    }
+    result
+  }
+}
+
 impl Alert {
   pub fn new(
     headline: String,
@@ -118,20 +128,41 @@ impl From<AlertResponse> for Alert {
   }
 }
 
-pub async fn get_alerts(location: Location, days: i32) -> Result<Alerts, Error> {
-  if location.lat.is_none() && location.lon.is_none() {
-    return Err(Error::NoLocation);
+impl ToString for Alert {
+  fn to_string(&self) -> String {
+    format!(
+      "Headline: {}\nType: {}\nDescription: {}\nSeverity: {}\nUrgency: {}\nAreas: {}\nCategory: {}\nCertainty: {}\nEvent: {}\nNote: {}\nEffective: {}\nExpires: {}\nInstruction: {}\n",
+      self.headline,
+      self.message_type,
+      self.description,
+      self.severity,
+      self.urgency,
+      self.areas,
+      self.category,
+      self.certainty,
+      self.event,
+      self.note,
+      self.effective,
+      self.expires,
+      self.instruction
+    )
   }
+}
 
-  let lat = location.lat.unwrap();
-  let lon = location.lon.unwrap();
+/// Get weather alerts for a location.
+/// Returns a Result with the Alerts struct or an Error from this crate.
+pub async fn get_alerts(location: Location, days: i32) -> Result<Alerts, Error> {
+  let location_query = match location.query() {
+    Ok(query) => query,
+    Err(err) => return Err(err),
+  };
 
   let address = std::env::var("WEATHER_API").unwrap();
   let key = std::env::var("WEATHER_KEY").unwrap();
 
   let url = format!(
-    "{}/forecast.json?key={}&q={},{}&days={}&alerts=yes",
-    address, key, lat, lon, days
+    "{}/forecast.json?key={}&q={}&days={}&alerts=yes",
+    address, key, location_query, days
   );
 
   match reqwest::get(&url).await {

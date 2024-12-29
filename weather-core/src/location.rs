@@ -1,6 +1,7 @@
 use crate::{
   error::Error,
   ip::{self},
+  Query,
 };
 
 #[derive(Debug, Clone)]
@@ -10,6 +11,36 @@ pub struct Location {
   pub city: Option<String>,
   pub lat: Option<f64>,
   pub lon: Option<f64>,
+}
+
+impl Query<String> for Location {
+  /// Generate the query result for a location.
+  /// If the location does not have a latitude and longitude, an error is returned.
+  /// Otherwise {lat},{lon} pairs are returned as a string.
+  fn query(&self) -> Result<String, Error> {
+    if self.lat.is_none() && self.lon.is_none() {
+      return Err(Error::NoLocation);
+    }
+
+    let lat = self.lat.unwrap();
+    let lon = self.lon.unwrap();
+
+    Ok(format!("{},{}", lat, lon))
+  }
+}
+
+impl ToString for Location {
+  fn to_string(&self) -> String {
+    match &self.region {
+      Some(region) => format!(
+        "{}, {}, {}",
+        self.city.as_ref().unwrap(),
+        region,
+        self.country
+      ),
+      None => format!("{}, {}", self.city.as_ref().unwrap(), self.country),
+    }
+  }
 }
 
 pub async fn get_location_from_ip(ip: &str) -> Result<Location, Error> {
@@ -38,6 +69,36 @@ mod tests {
     dotenv::dotenv().ok();
     std::env::set_var("IP_LOCATION_API", &mockito::server_url());
     std::env::set_var("PUBLIC_IP_API", &mockito::server_url());
+  }
+
+  #[test]
+  fn test_query_success() {
+    let location = Location {
+      country: "United Kingdom".to_string(),
+      region: Some("City of London, Greater London".to_string()),
+      city: Some("London".to_string()),
+      lat: Some(51.5171),
+      lon: Some(-0.1062),
+    };
+
+    let result = location.query();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), "51.5171,-0.1062");
+  }
+
+  #[test]
+  fn test_query_no_lat_lon() {
+    let location = Location {
+      country: "United Kingdom".to_string(),
+      region: Some("City of London, Greater London".to_string()),
+      city: Some("London".to_string()),
+      lat: None,
+      lon: None,
+    };
+
+    let result = location.query();
+    assert!(result.is_err());
+    assert_eq!(result.err().unwrap(), Error::NoLocation);
   }
 
   #[tokio::test]

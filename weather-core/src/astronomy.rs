@@ -1,7 +1,7 @@
 use chrono::Local;
 use serde::Deserialize;
 
-use crate::{error::Error, location::Location};
+use crate::{error::Error, location::Location, Query};
 
 #[derive(Deserialize, Debug)]
 struct Response {
@@ -76,24 +76,39 @@ impl From<Response> for Astronomy {
   }
 }
 
+impl ToString for Astronomy {
+  fn to_string(&self) -> String {
+    format!(
+      "Sunrise: {}\nSunset: {}\nMoonrise: {}\nMoonset: {}\nMoon Phase: {}\nMoon Illumination: {}%\nIs Moon Up: {}\nIs Sun Up: {}",
+      self.sunrise,
+      self.sunset,
+      self.moonrise,
+      self.moonset,
+      self.moon_phase,
+      self.moon_illumination,
+      self.is_moon_up,
+      self.is_sun_up
+    )
+  }
+}
+
 /// Get the current astronomy data for a given location.
 /// By default uses the lat and lon data from the location struct, if it exists.
 /// If there is no location data within the struct, it will return an error.
 pub async fn get_current_astronomy(location: Location) -> Result<Astronomy, Error> {
-  if location.lat.is_none() && location.lon.is_none() {
-    return Err(Error::NoLocation);
-  }
+  let location_query = match location.query() {
+    Ok(query) => query,
+    Err(err) => return Err(err),
+  };
 
-  let lat = location.lat.unwrap();
-  let lon = location.lon.unwrap();
   let dt = Local::now().format("%Y-%m-%d").to_string();
 
   let address = std::env::var("WEATHER_API").unwrap();
   let key = std::env::var("WEATHER_KEY").unwrap();
 
   let url = format!(
-    "{}/astronomy.json?key={}&q={},{}&dt={}",
-    address, key, lat, lon, dt
+    "{}/astronomy.json?key={}&q={}&dt={}",
+    address, key, location_query, dt
   );
 
   match reqwest::get(&url).await {

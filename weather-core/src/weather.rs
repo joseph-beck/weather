@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::{error::Error, location::Location};
+use crate::{error::Error, location::Location, Query};
 
 #[derive(Debug, Deserialize)]
 struct Response {
@@ -167,6 +167,31 @@ impl From<(Response, Units)> for Weather {
   }
 }
 
+impl ToString for Weather {
+  fn to_string(&self) -> String {
+    format!(
+      "Is Day: {}\n Temperature: {}\n Feels Like: {}\n Heat Index: {}\n Condition: {}\n Wind Speed: {}\n Wind Degree: {}\n Wind Direction: {}\n Wind Gust Speed: {}\n Wind Chill: {}\n Pressure: {}\n Precipitation: {}\n Humidity: {}\n Cloud: {}\n UV: {}\n Visibility: {}\n Dew Point: {}",
+      self.is_day,
+      self.temperature,
+      self.feels_like,
+      self.heat_index,
+      self.condition.to_string(),
+      self.wind_speed,
+      self.wind_degree,
+      self.wind_dir,
+      self.wind_gust_speed,
+      self.wind_chill,
+      self.pressure,
+      self.precipitation,
+      self.humidity,
+      self.cloud,
+      self.uv,
+      self.visibility,
+      self.dew_point
+    )
+  }
+}
+
 impl Condition {
   pub fn new(text: String, icon: String, code: i32) -> Self {
     Condition { text, icon, code }
@@ -179,18 +204,22 @@ impl From<ConditionResponse> for Condition {
   }
 }
 
-pub async fn get_current_weather(location: Location, units: Units) -> Result<Weather, Error> {
-  if location.lat.is_none() && location.lon.is_none() {
-    return Err(Error::NoLocation);
+impl ToString for Condition {
+  fn to_string(&self) -> String {
+    format!("{}\n Icon: {}\n Code: {}", self.text, self.icon, self.code)
   }
+}
 
-  let lat = location.lat.unwrap();
-  let lon = location.lon.unwrap();
+pub async fn get_current_weather(location: Location, units: Units) -> Result<Weather, Error> {
+  let location_query = match location.query() {
+    Ok(query) => query,
+    Err(err) => return Err(err),
+  };
 
   let address = std::env::var("WEATHER_API").unwrap();
   let key = std::env::var("WEATHER_KEY").unwrap();
 
-  let url = format!("{}/current.json?key={}&q={},{}", address, key, lat, lon);
+  let url = format!("{}/current.json?key={}&q={}", address, key, location_query);
 
   match reqwest::get(&url).await {
     Ok(response) => {
@@ -208,19 +237,17 @@ pub async fn get_forecast_weather(
   units: Units,
   days: i32,
 ) -> Result<Weather, Error> {
-  if location.lat.is_none() && location.lon.is_none() {
-    return Err(Error::NoLocation);
-  }
-
-  let lat = location.lat.unwrap();
-  let lon = location.lon.unwrap();
+  let location_query = match location.query() {
+    Ok(query) => query,
+    Err(err) => return Err(err),
+  };
 
   let address = std::env::var("WEATHER_API").unwrap();
   let key = std::env::var("WEATHER_KEY").unwrap();
 
   let url = format!(
-    "{}/forecast.json?key={}&q={},{}&days={}",
-    address, key, lat, lon, days
+    "{}/forecast.json?key={}&q={}&days={}",
+    address, key, location_query, days
   );
 
   match reqwest::get(&url).await {

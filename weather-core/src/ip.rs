@@ -84,6 +84,9 @@ impl From<Response> for IP {
   }
 }
 
+/// Get the location from a given IP address.
+/// IP given as string.
+/// Returns a Result with the IP struct or a reqwest error.
 pub async fn get_location(ip: String) -> Result<IP, reqwest::Error> {
   let address = env::var("IP_LOCATION_API").unwrap();
   let url = format!("{}/{}", address, ip);
@@ -92,6 +95,8 @@ pub async fn get_location(ip: String) -> Result<IP, reqwest::Error> {
   Ok(IP::from(location))
 }
 
+/// Get the public IP address of the current machine.
+/// Returns a Result with the IP address or a reqwest error.
 pub async fn get_public_ip() -> Result<String, reqwest::Error> {
   #[derive(Deserialize)]
   struct Response {
