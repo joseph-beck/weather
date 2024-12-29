@@ -46,6 +46,14 @@ pub fn cli() -> Command<'static> {
     .subcommand_required(true)
     .arg_required_else_help(true)
     .subcommand(
+      Command::new("alert")
+        .about("Get the current alerts.")
+        .arg(days_arg.clone())
+        .arg(verbose_option.clone())
+        .arg(city_option.clone())
+        .arg(post_code_option.clone()),
+    )
+    .subcommand(
       Command::new("astronomy")
         .about("Get the current astronomy.")
         .arg(verbose_option.clone())

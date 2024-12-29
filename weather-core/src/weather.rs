@@ -194,7 +194,7 @@ pub async fn get_current_weather(location: Location, units: Units) -> Result<Wea
 
   match reqwest::get(&url).await {
     Ok(response) => {
-      let weather: Response = response.json().await.unwrap();
+      let weather: Response = response.json::<Response>().await.unwrap();
       Ok(Weather::from((weather, units)))
     }
     Err(err) => Err(Error::Fetch {
