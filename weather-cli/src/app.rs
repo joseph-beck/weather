@@ -1,7 +1,7 @@
 use weather_core::error::Error;
 
 use crate::command::cli;
-use crate::handler::{handle_astronomy, handle_current};
+use crate::handler::{handle_astronomy, handle_current, handle_forecast};
 
 pub async fn run() -> Result<(), Error> {
   dotenv::dotenv().ok();
@@ -17,6 +17,12 @@ pub async fn run() -> Result<(), Error> {
       Ok(_) => Ok(()),
       Err(err) => Err(err),
     },
+    Some(("forecast", args)) => {
+      match handle_forecast(*args.get_one::<i32>("days").unwrap()).await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
+      }
+    }
     _ => unreachable!(),
   }
 }
