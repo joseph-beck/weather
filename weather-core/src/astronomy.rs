@@ -124,7 +124,11 @@ mod tests {
     setup();
     let _m = mock(
       "GET",
-      "/astronomy.json?key=test_key&q=51.5171,-0.1062&dt=2024-12-28",
+      format!(
+        "/astronomy.json?key=test_key&q=51.5171,-0.1062&dt={}",
+        Local::now().format("%Y-%m-%d")
+      )
+      .as_str(),
     )
     .with_status(200)
     .with_header("content-type", "application/json")
