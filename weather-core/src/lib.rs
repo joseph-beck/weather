@@ -2,6 +2,7 @@ use error::Error;
 
 pub mod alert;
 pub mod astronomy;
+pub mod config;
 pub mod error;
 pub mod ip;
 pub mod location;
